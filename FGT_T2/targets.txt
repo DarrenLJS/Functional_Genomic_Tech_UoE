@@ -1,0 +1,12 @@
+Name	Filename	Description
+ESC.1	GSM272753.CEL	Embryonic Stem cells sample 1
+ESC.2	GSM272836.CEL	Embryonic Stem cells sample 2
+ESC.3	GSM272837.CEL	Embryonic Stem cells sample 3
+iPSC2.2	GSM272839.CEL	"Induced pluripotent stem (iPS) cells (Oct4, Klf4) sample 2"
+iPSC2.3	GSM272846.CEL	"Induced pluripotent stem (iPS) cells (Oct4, Klf4) sample 3"
+NSC.1	GSM272847.CEL	Neural stem cells (NSC) sample 2
+NSC.2	GSM272848.CEL	Neural Stem cells (NSC) sample 3
+iPSC2.1	GSM272890.CEL	"Induced pluripotent stem (iPS) cells (Oct4, Klf4) sample 1"
+iPSC4.1	GSM279200.CEL	"Induced pluripotent stem (iPS) cells (Oct4, Sox2, c-Myc, Klf4) sample 1"
+iPSC4.2	GSM279201.CEL	"Induced pluripotent stem (iPS) cells (Oct4, Sox2, c-Myc, Klf4) sample 2"
+iPSC4.3	GSM279202.CEL	"Induced pluripotent stem (iPS) cells (Oct4, Sox2, c-Myc, Klf4) sample 3"
