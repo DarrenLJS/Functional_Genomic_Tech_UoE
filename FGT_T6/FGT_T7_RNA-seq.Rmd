@@ -1,0 +1,395 @@
+---
+title: "AdvancedRNA-seq"
+author: "Simon Tomlinson"
+date: "16/02/2026"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analysis of RNA-seq data using R 
+
+•	You should have created a new folder for this tutorial, copied and unpacked  the tutorial files 
+•	Now run this script
+
+
+```{r init, echo=FALSE}
+#Load the required libraries & load the files for the tutorial
+library(Rsubread)
+library(edgeR)
+library(limma)
+library(gplots)
+library(DESeq2)
+library(affy)
+library(QuasR)
+library(pheatmap)
+load("FGT_T7_RNA-seq.Rdata")
+#We now have files for the tutorial and also data loaded into the workspace- use ls() and dir() to view this data
+ls()
+dir()
+
+
+```
+Once we have loaded the data we are ready to run some further analysis.
+
+```{r input_processing, echo=FALSE}
+#Some further processing to access count data and column names.
+table_rnaseq<-(mytable_feaures)$counts
+colnames_rnaseq <-colnames(table_rnaseq)
+#tidy up the sample names eg"X.home.guest101.new_rnaseq.aligned.SRR5054353.sorted.bam"
+#to ShortName  using the “ targets file called adf here
+adf <-read.table("mychromosome_samples4.txt",sep='\t', row.names=1,fill=T,header=T)
+#This orders the elements in the table
+idx<-match(colnames_rnaseq,rownames(adf))
+colnames(table_rnaseq) <-adf$ShortName[idx]
+adf <-adf[idx,]
+rownames(adf) <-colnames(table_rnaseq)
+```
+## Exploring the Sample Annotation
+We can use R to summarise the annotation table from this study. 
+```{r explore_annot, echo=FALSE}
+
+#Load the annotation table- here it is a data frame
+adf <-read.table("mychromosome_samples4.txt",sep='\t', row.names=1,fill=T,header=T)
+#The annotation table contains data in a number of named columns
+colnames(adf)
+#We can generate a histogram to explore the library sizes in this data.
+hist(as.numeric(adf$Bases.M.))
+#It is also interesting to summarise the table in terms of factors called “Line” and “Sex”.  
+table(adf[,c("Line","Sex")])
+
+```
+
+## Counting Genomic Features
+We now have reads mapped to the genome, gene annotation files but the reads are not mapped and counted within each annotation region (eg within each gene).  The reads aligned to the genome are in a file format called BAM see  https://www.ncbi.nlm.nih.gov/sra/docs/submitformats/.  If we were to view this file we would see the regions to which the reads map, but in the next stage of the pipeline we use a tool called featureCounts to count the reads that map within each region we are interested in.  In the interest of time, the command is provided but commented out.  The results of running featureCounts were loaded into R when we loaded the serialised “.Rdata” object for this experiment.
+
+```{r counting_genomic_features, echo=TRUE}
+#use featureCounts to load the BAM files into the 
+#mytable_feaures <-featureCounts(files=alignment_files,annot.ext="./omes/annot/Mus_musculus.GRCm38.99.gtf",isGTFAnnotationFile = TRUE, countMultiMappingReads=F, minMQS=30, nthreads=10,minOverlap=10)
+#feature counts takes the genome annotation file #(Mus_musculus.GRCm38.99.gtf) and the BAM files themselves.  Note #that alignment_files is just a list of file locations.
+#Check the contents of the alignment_files
+alignment_files
+#Note also that we have countMultiMappingReads =F this means that #reads that map to more than one genome location are ignored.
+#minMQS – minimum mapping quality score,30 is a very stringent value #(we return to this later)
+#nthreads =10 run ten threads at once (another reason to pre-compute #this in a large class!
+#minOverlap =10 – the minimum overlap between the feature and the read- here 10bp 
+#Some further processing to access count data and column names.
+table_rnaseq<-(mytable_feaures)$counts
+colnames_rnaseq <-colnames(table_rnaseq)
+#tidy up the sample names #eg fix #"X.home.guest101.new_rnaseq.aligned.SRR5054353.sorted.bam"!
+#to ShortName using the “ targets file” object called adf here
+#This orders the elements in the table
+idx<-match(colnames_rnaseq,rownames(adf))
+colnames(table_rnaseq) <-adf$ShortName[idx]
+adf <-adf[idx,]
+rownames(adf) <-colnames(table_rnaseq)
+#Finally check the output of the reorganisation
+head(table_rnaseq)
+
+
+```
+
+
+## Removal of Unwanted Samples
+Notice from the annotation we have two XO samples, we can convert the design to a two factor factorial design by removing these two samples.  We then have three samples in each combination of the two factors.
+
+
+```{r remove_unwanted_samples, echo=TRUE}
+#Adjust sample data
+table(adf[,c("Line","Sex")])
+#keep-remove XO samples
+keep_cols=adf$Sex[idx]!="O"
+#We can use this to remove the unwanted columns from the adf and #also the data eg
+table(adf[,c("Line","Sex")])
+#With just the required columns
+table(adf[keep_cols,c("Line","Sex")])
+adf <-adf[keep_cols,]
+
+```
+
+## Loading the Data into DESeq
+DESeq2 will used for the statistical analysis and the normalisation of the data. 
+```{r loading_deseq, echo=FALSE}
+#Create object for DESeq
+#NOTE the design for differential analysis is fed into this object 
+dds_rnaseq <- DESeqDataSetFromMatrix(countData = table_rnaseq[,keep_cols],colData = adf,design = ~ Line + Sex)
+#check the object dimensions
+dim(dds_rnaseq)
+head(rownames(dds_rnaseq))
+colnames(dds_rnaseq)
+#check the object type
+class(dds_rnaseq)
+typeof(dds_rnaseq)
+
+#check what this object contains
+slotNames(dds_rnaseq)
+colnames(colData(dds_rnaseq))
+colnames(assay(dds_rnaseq))
+
+```
+
+Quality Filtering Genes
+Apply filters to remove genes that do not pass quality filters.
+
+
+```{r apply_filters, echo=FALSE}
+#first filter based upon counts
+keep <- rowSums(counts(dds_rnaseq)) > 1
+dds_rnaseq <- dds_rnaseq[keep,]
+nrow(dds_rnaseq)
+#second filter we might apply-require >10 in >= 3 samples
+#rowSums here counts the number of TRUE elements per row
+# counts(dds_rnaseq) >= 10 returns TRUE if each row has >= 10 TRUE
+#counts 
+keep <- rowSums(counts(dds_rnaseq) >= 10) >= 3
+dds_rnaseq <- dds_rnaseq[keep,]
+#We now have a DESeq object filtered for samples and genes that pass #QC
+nrow(dds_rnaseq)
+```
+
+## Normalisation of Data
+
+
+```{r normalisation, echo=TRUE}
+#size factor estimation for normalisation- these are used to scale by library size when data is exported.
+dds_rnaseq <- estimateSizeFactors(dds_rnaseq)
+sizeFactors(dds_rnaseq)
+#The size factors should relate to the library size.  We can check this from the annotation
+adf_bases <- adf$Bases.M.
+names(adf_bases) <- rownames(adf)
+adf_bases <- adf_bases/mean(adf_bases)
+#Check how these two tables relate
+plot(sizeFactors(dds_rnaseq), adf_bases)
+
+```
+
+## DESeq2 also provides methods that outputs data with various normalisations.
+Here we generate multiple different normalisations and compare between then- but for the rest of the tutorial we use rlog normalisation!  Note that the normalised data is not used for differential expression analysis- just for data visualisation.
+
+
+```{r plot_normalised, echo=FALSE}
+
+#Normalised log counts
+counts_rnaseq <-log2(counts(dds_rnaseq, normalized=TRUE))
+#fpm is similar to cpm and discussed here https://rdrr.io/bioc/DESeq2/man/fpm.html.  Here the data is log transformed
+fpm_rnaseq <-log(fpm(dds_rnaseq))#this is also normalised by the sizeFactors
+#rlog ad vsd are discussed here https://genomebiology.biomedcentral.com/articles/10.1186/s13059-014-0550-8
+vsd_rnaseq <- vst(dds_rnaseq, blind = T)
+head(vsd_rnaseq, 3)
+rld_rnaseq <- rlog(dds_rnaseq, blind = T)
+head(rld_rnaseq, 3)
+
+
+```
+We will use rlog for the rest of this tutorial, but here we compare the different normalised data
+
+##Plots with Normalised Data.
+
+```{r build_plots, echo=FALSE}
+boxplot(counts_rnaseq)
+boxplot(fpm_rnaseq)
+boxplot(assay(vsd_rnaseq))#etc
+boxplot(assay(rld_rnaseq))#etc
+#but suppose we look at non-normalised
+na.rm=T
+counts_un <-counts(dds_rnaseq, normalized=FALSE)
+boxplot(log2(counts_un))
+counts_un_rlog<-rlog(counts_un)
+#We can make an mva.pairs plot for any of these data
+#For example we can examine the unnormalized data.
+#make mva.pairs-this is slow “mva.pairs.png” is provided 
+#png(filename="mva.pairs.png",width=2000, height=2000)
+#mva.pairs(counts_un_rlog)
+#dev.off()
+
+```
+
+Exploratory Data Plots
+PCA plots similar to those we use for microarrays.
+
+
+```{r more_explore, echo=FALSE}
+#we can run a PCA plot here...
+library(scatterplot3d)
+library(ggplot2)
+# Perform PCA
+pca <- prcomp(t(na.omit(assay(rld_rnaseq))), scale=T)
+# Plot the PCA results
+s3d<-scatterplot3d(pca$x[,1:3], pch=19, color=colData(dds_rnaseq)$Colour)
+s3d.coords <- s3d$xyz.convert(pca$x[,1:3])
+text(s3d.coords$x, s3d.coords$y, labels = colnames(rld_rnaseq),pos = 3,offset = 0.5,cex=0.5)
+#or a quick plot in 2d
+qplot(pca$x[,1],pca$x[,2],xlab="PCA1", ylab="PCA2",color=colData(dds_rnaseq)$Colour)
+#We can also output a distance matrix…
+sampleDists <- dist(t(assay(rld_rnaseq)))
+sampleDists
+
+```
+## Generate further heatmaps with the data
+
+```{r more_heatma-s, echo=FALSE}
+library("pheatmap")
+library("RColorBrewer")
+sampleDistMatrix <- as.matrix(sampleDists)
+pheatmap(sampleDistMatrix)
+#easier PCA plot
+plotPCA(rld_rnaseq, intgroup = c("Sex", "Line"))
+```
+
+
+## Differential Gene Expression
+Here we perform a two factor analysis using DESeq2.  The design was fed into the dds_rnaseq object and was specified out as  ~Line + Sex which specifies two factors Sex and Line.   Sex and Line are colnames in the annotation able and samples are therefore annotated with these labels.  Statistics in DESeq2 works in a similar way to Limma but is designed for count data. 
+
+```{r differential_expression, echo=FALSE}
+dds_rnaseq <- DESeq(dds_rnaseq)
+#This is how you specify a contrast…
+result_sex <-results(dds_rnaseq,contrast=c("Sex","M","F"))
+result_cell_line <-results(dds_rnaseq,contrast=c("Line","BC","CB"))
+#make a nice plot of differential expression
+plotMA(result_sex, main="DESeq2 dispersion plot", ylim=c(-2,2))
+table(result_sex$padj < 0.01)
+table(result_cell_line$padj < 0.01)
+table(result_sex$padj < 0.05)
+table(result_cell_line$padj < 0.05)
+result_sex_selected <- subset(result_sex, padj < 0.05)
+result_sex_selected <-result_sex_selected[order(abs(result_sex_selected$log2FoldChange),decreasing = TRUE), ]
+head(result_sex_selected)
+```
+
+## Make heatmaps from each of the output tables- selected top 50 or all using fold change and FDR.
+
+```{r differential_expression_heatmaps, echo=FALSE}
+top50 <-rownames(result_sex_selected)[1:50]
+#make a heatmap for the top 50
+pheatmap(assay(rld_rnaseq)[top50,],scale="row",show_rownames=F,main="RLD values, Row Scaled, Top 50")
+#all
+pheatmap(assay(rld_rnaseq)[rownames(result_sex_selected),],scale="row",show_rownames=F,main="Sex Selected, Row Scaled")
+#and the cell lines
+result_cell_selected <- subset(result_cell_line, padj < 0.05)
+result_cell_selected <-result_cell_selected[order(abs(result_cell_selected$log2FoldChange),decreasing = TRUE), ]
+head(result_cell_selected)
+top50c <-rownames(result_cell_selected)[1:50]
+#make a heatmap for the top 50
+pheatmap(assay(rld_rnaseq)[top50c,],scale="row",show_rownames=F, main="Cell Line Selected, Row Scaled, Top 50")
+#all
+pheatmap(assay(rld_rnaseq)[rownames(result_cell_selected),],scale="row",show_rownames=F,main="Cell Line Selected, Row Scaled")
+```
+
+
+## Build Gene Annotation. A serialised result "mart" has been generated in case Ensembl is unavailable
+
+```{r build_gene_annotation, echo=TRUE}
+#Download Ensembl annotation using BiomaRt and rename the samples
+library(biomaRt)
+#If UK ensembl is slow we can also use a USA mirror, "useast.ensembl.org"
+ensembl_host <-"https://www.ensembl.org"
+head(biomaRt::listMarts(host = ensembl_host), 15)
+head(biomaRt::listAttributes(biomaRt::useDataset(dataset = "mmusculus_gene_ensembl",mart = useMart("ENSEMBL_MART_ENSEMBL",host = ensembl_host))), 40) 
+mart <- biomaRt::useDataset(dataset = "mmusculus_gene_ensembl",mart    = useMart("ENSEMBL_MART_ENSEMBL",host    = ensembl_host))
+resultAnnot <- biomaRt::getBM(values=rownames(dds_rnaseq),attributes = c("ensembl_gene_id","external_gene_name","chromosome_name","start_position","end_position","description","strand"),filters="ensembl_gene_id",mart=mart)
+
+```
+
+Merge Annotation with Input Data
+```{r merge_gene_annotation, echo=FALSE}
+#merge with input data
+names <- resultAnnot[,1]
+resultAnnot <- as.data.frame(resultAnnot)
+rownames(resultAnnot) = names
+idx<-match(rownames(dds_rnaseq),rownames(resultAnnot))
+#make sure annotation is in same order
+all(rownames(dds_rnaseq) == rownames(resultAnnot))
+grr<-resultAnnot[match(rownames(dds_rnaseq), resultAnnot$ensembl_gene_id),]
+all(rownames(dds_rnaseq) == rownames(grr))
+resultAnnot <-grr
+all(rownames(dds_rnaseq) == rownames(resultAnnot))
+#make the nice names
+nice_names<-paste(resultAnnot$ensembl_gene_id,resultAnnot$external_gene_name, sep = '_')
+resultAnnot$nice_names <-nice_names
+head(resultAnnot)
+all(rownames(dds_rnaseq) == rownames(resultAnnot))
+#check names
+rld_rnaseq <- rlog(dds_rnaseq, blind = TRUE)#
+idx2 <-match(rownames(result_sex_selected)[1:50],rownames(dds_rnaseq))
+plotme <-(rld_rnaseq)[rownames(result_sex_selected)[1:50],]
+rownames(plotme)<-resultAnnot$nice_names[idx2]
+#make heatmap with candidate genes
+png(filename="heatmap_candidates.png",width=800, height=1000)
+pheatmap(assay(plotme),scale="row",fontsize_row = 10,cellheight =12, cellwidth =12,treeheight_row = 40, treeheight_col = 40)
+dev.off()
+
+pheatmap(assay(plotme),scale="row",fontsize_row = 10,cellheight =12, cellwidth =12,treeheight_row = 40, treeheight_col = 40)
+
+```
+
+
+## Marker gene Profiles
+
+```{r marker_gene_profiles, echo=FALSE}
+#But what about the marker profiles from known markers?
+#Load some developmental markers to assess the expression profile
+mkr <-read.table("markers.txt",stringsAsFactors = F,fill=T,row.names = 1,header=T,sep="\t")
+rownames(mkr)
+#%in%  This makes sure the marker gene names are rownames in the object
+valid_names <-rownames(mkr)[rownames(mkr) %in% rownames(dds_rnaseq)]
+plotmetoo <-rld_rnaseq[valid_names,]
+idx3 <-match(rownames(plotmetoo),rownames(dds_rnaseq))
+rownames(plotmetoo)<-resultAnnot$nice_names[idx3]
+
+knownmarkerplot <-pheatmap(assay(plotmetoo),scale="row",fontsize_row = 10,cellheight =12, cellwidth =12,treeheight_row = 40, treeheight_col = 40,main="Known Markers")
+
+#make a standalone version
+png("plotofknownmarkers.png", width=600,height=600)
+knownmarkerplot
+dev.off()
+
+```
+
+##Finally add column annotation
+
+```{r column_annotation, echo=FALSE, out.width="100%", out.height="100%"}
+#put in column annotation
+mkr_bit <-mkr[valid_names,]
+rownames(mkr_bit) <-resultAnnot$nice_names[idx3]
+
+Sys.setlocale("LC_ALL", "C")
+plotcellstate <-pheatmap(assay(plotmetoo),scale="row",fontsize_row = 10,annotation_row=as.data.frame(mkr_bit[,c("LongState","ShortState")]),cellheight =12, cellwidth =12,treeheight_row = 40, treeheight_col = 40, main="Plot with Cell Type Information",cluster_rows = TRUE)
+
+#if it does not fit make a png
+png("plotofcelltype.png", width=600,height=600)
+plotcellstate
+dev.off()
+
+#Perhaps make a plot ordered by the factor so that patterns are easier to see
+mkbit_ordered <-mkr_bit[order(mkr_bit$ShortState),]
+plotmarkers <-assay(plotmetoo)
+plotmarkers <-plotmarkers[rownames(mkbit_ordered),]
+
+plotcellstate_ordered <-pheatmap(plotmarkers,scale="row",fontsize_row = 10,annotation_row=as.data.frame(mkbit_ordered[,c("LongState","ShortState")]),cellheight =12, cellwidth =12,treeheight_row = 40, treeheight_col = 40, main="Plot with Cell Type Information Factor Ordered",cluster_rows = FALSE)
+
+#if it does not fit make a png
+png("plotofcelltype_ordered.png", width=600,height=600)
+plotcellstate_ordered
+dev.off()
+
+
+
+
+```
+
+Additional Reading
+http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+
+## Session Information
+```{r session_info, echo=FALSE}
+
+sessionInfo()
+
+```
+
+

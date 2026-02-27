@@ -1,0 +1,15 @@
+RowNames	BioSample	Experiment	SampleName	Source_name	GEO_Accession	AvgSpotLen	Bases(M)	Bytes(Mb)	ShortName	X_chr_complement	Line	Sex	Colour
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405894.sorted.bam	SAMN06054334	SRX2375307	GSM2405894	female embryo from cross between C57BL/6J female X CAST/EiJ male	GSM2405894	50	2002	992.62	BCF1	XX	BC	F	Yellow
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405895.sorted.bam	SAMN06054333	SRX2375308	GSM2405895	female embryo from cross between C57BL/6J female X CAST/EiJ male	GSM2405895	50	2950	1410	BCF2	XX	BC	F	Yellow
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405896.sorted.bam	SAMN06054332	SRX2375309	GSM2405896	female embryo from cross between C57BL/6J female X CAST/EiJ male	GSM2405896	50	1230	491.84	BCF3	XX	BC	F	Yellow
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405897.sorted.bam	SAMN06054331	SRX2375310	GSM2405897	male embryo from cross between C57BL/6J female X CAST/EiJ male	GSM2405897	50	953.4	600.34	BCM1	XY	BC	M	Green
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405898.sorted.bam	SAMN06054330	SRX2375311	GSM2405898	male embryo from cross between C57BL/6J female X CAST/EiJ male	GSM2405898	50	1430	904.5	BCM2	XY	BC	M	Green
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405899.sorted.bam	SAMN06054329	SRX2375312	GSM2405899	male embryo from cross between C57BL/6J female X CAST/EiJ male	GSM2405899	50	1900	1160	BCM3	XY	BC	M	Green
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405900.sorted.bam	SAMN06054328	SRX2375313	GSM2405900	XO embryo from cross between C57BL/6J female X CAST/EiJ male	GSM2405900	50	2020	1250	BCO1	XO	BC	O	Gray
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405901.sorted.bam	SAMN06054349	SRX2375314	GSM2405901	XO embryo from cross between C57BL/6J female X CAST/EiJ male	GSM2405901	50	1710	1050	BCO2	XO	BC	O	Gray
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405902.sorted.bam	SAMN06054348	SRX2375315	GSM2405902	female embryo from cross between CAST/EiJ female X C57BL/6J male	GSM2405902	49	963.8	681.77	CBF1	XX	CB	F	Blue
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405903.sorted.bam	SAMN06054347	SRX2375316	GSM2405903	female embryo from cross between CAST/EiJ female X C57BL/6J male	GSM2405903	49	932.11	655.5	CBF3	XX	CB	F	Blue
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405904.sorted.bam	SAMN06054346	SRX2375317	GSM2405904	female embryo from cross between CAST/EiJ female X C57BL/6J male	GSM2405904	50	1350	850.26	CBF4	XX	CB	F	Blue
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405905.sorted.bam	SAMN06054345	SRX2375318	GSM2405905	male embryo from cross between CAST/EiJ female X C57BL/6J male	GSM2405905	49	676.54	480.25	CBM1	XY	CB	M	Red
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405906.sorted.bam	SAMN06054344	SRX2375319	GSM2405906	male embryo from cross between CAST/EiJ female X C57BL/6J male	GSM2405906	49	779.44	556.25	CBM2	XY	CB	M	Red
+X.home.guest101.new_rnaseq.aligned_merged.GSM2405907.sorted.bam	SAMN06054343	SRX2375320	GSM2405907	male embryo from cross between CAST/EiJ female X C57BL/6J male	GSM2405907	49	1030	730.65	CBM3	XY	CB	M	Red
